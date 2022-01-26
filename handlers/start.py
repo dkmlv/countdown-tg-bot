@@ -13,11 +13,12 @@ from aiogram.dispatcher import FSMContext
 from dateutil.zoneinfo import get_zonefile_instance
 
 from loader import dp, supabase
-from states.states import waiting_for_tz
+from states.states import Start
 from utils.get_db_data import get_tz_info
 
 
 @dp.message_handler(commands="start", state="*")
+@dp.throttled(rate=3)
 async def greet_user(message: types.Message):
     """Greet user and ask their time zone if they don't exist in db."""
     await message.reply(
@@ -35,12 +36,12 @@ async def greet_user(message: types.Message):
             "\n\nFor example: If you live in Uzbekistan, just type "
             "'<code>Asia/Tashkent</code>'"
         )
-        await waiting_for_tz.set()
+        await Start.waiting_for_tz.set()
     else:
         await message.answer("See <b>/help</b> for more information.")
 
 
-@dp.message_handler(state=waiting_for_tz)
+@dp.message_handler(state=Start.waiting_for_tz)
 async def add_user(message: types.Message, state: FSMContext):
     """Insert user info to the db if valid time zone is provided."""
     time_zone = message.text
@@ -61,6 +62,6 @@ async def add_user(message: types.Message, state: FSMContext):
         )
     else:
         await message.reply(
-            "Sorry, I don't understand what this timezone is. Are you sure you "
-            "typed it correctly?"
+            "Sorry, I don't understand which timezone this is. Are you sure "
+            "you typed it correctly?"
         )
