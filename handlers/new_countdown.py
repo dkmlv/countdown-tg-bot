@@ -15,13 +15,13 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 
 from handlers.schedule_jobs import schedule_goodbye_cd, schedule_reminders
-from loader import dp, supabase
+from loader import dp, sched, supabase
 from states.states import NewCountdown
 from utils.get_db_data import get_countdown_names, get_tz_info
 from utils.validate_date import validate_dt
 
 
-@dp.message_handler(commands="new_countdown")
+@dp.message_handler(commands="new_countdown", state="*")
 async def ask_countdown_format(message: types.Message):
     """Ask user to pick a countdown format.
 
@@ -94,7 +94,12 @@ async def ask_daily_reminders(message: types.Message, state: FSMContext):
         await message.reply(
             "You already have a countdown with this name. Try another name."
         )
-    elif re.match(r"^[\w\-\s]+$", countdown_name):
+    elif len(countdown_name) > 40:
+        await message.reply(
+            "Sorry, your countdown name cannot be longer than 40 characters. "
+            "Please type another name."
+        )
+    elif re.match(r"^[\w\s]+$", countdown_name):
         await state.update_data(cd_name=countdown_name)
         await NewCountdown.next()
 
@@ -183,3 +188,8 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
             "Looks you did not set up your time zone at the start, so I'll "
             "abort this operation. Please use <b>/start</b> and try again."
         )
+
+
+@dp.message_handler(commands="print")
+async def print_jobs(message: types.Message):
+    sched.print_jobs()

@@ -83,7 +83,7 @@ async def get_countdown_details(user_id: int, name: str) -> Union[dict, None]:
     """
 
     data = (
-        supabase.table("Countdown")
+        supabase.table("Countdowns")
         .select("*")
         .eq("tg_user_id", user_id)
         .eq("name", name)

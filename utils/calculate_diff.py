@@ -32,4 +32,4 @@ def calculate_diff(date_time: str) -> str:
     if difference.seconds >= 86390 and difference.seconds <= 86400:
         return precisedelta(difference, minimum_unit="days", format="%0.f")
     else:
-        return precisedelta(difference)
+        return precisedelta(difference, format="%0.f")

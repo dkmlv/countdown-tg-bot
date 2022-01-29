@@ -11,5 +11,7 @@ async def set_default_commands(dp):
         [
             types.BotCommand("start", "about info"),
             types.BotCommand("help", "how to use the bot"),
+            types.BotCommand("new_countdown", "create a new countdown"),
+            types.BotCommand("my_countdowns", "manage countdowns"),
         ]
     )
