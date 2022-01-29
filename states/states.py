@@ -6,6 +6,7 @@ class Start(StatesGroup):
 
 
 class NewCountdown(StatesGroup):
+    waiting_for_format = State()
     waiting_for_name = State()
     waiting_for_preference = State()
     waiting_for_dt = State()

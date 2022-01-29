@@ -1,4 +1,4 @@
-from datetime import datetime as dt
+import datetime as dt
 import logging
 from typing import Union
 
@@ -25,14 +25,14 @@ async def validate_dt(countdown_dt: str, time_zone: str) -> Union[str, None]:
     Returns
     -------
     Union[str, None]
-        A datetime str (date converted from provided time zone to UTC timezone)
-        if the date is valid, else None.
+        A datetime str with time zone (date converted from provided time zone
+        to UTC timezone) if the date is valid, else None.
     """
 
     dt_format = "%Y-%m-%d %H:%M"
 
     try:
-        date_object = dt.strptime(countdown_dt, dt_format)
+        date_object = dt.datetime.strptime(countdown_dt, dt_format)
     except ValueError:
         logging.info("User provided incorrect date and time.")
         return None
@@ -45,11 +45,10 @@ async def validate_dt(countdown_dt: str, time_zone: str) -> Union[str, None]:
 
         utc_date = date_object.astimezone(utc_zone)
 
-        utc_now = dt.now(utc_zone)
+        utc_now = dt.datetime.now(utc_zone)
 
-        # if the provided date is in the future and not today
-        time_diff = (utc_date - utc_now).seconds
-        if utc_date > utc_now and time_diff > 15:
-            return utc_date.strftime("%Y-%m-%d %H:%M")
+        # if the provided date is in the future
+        if utc_date > utc_now:
+            return utc_date.strftime("%Y-%m-%dT%H:%M:%S%z")
         else:
             return None

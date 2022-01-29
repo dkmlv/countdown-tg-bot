@@ -1,3 +1,12 @@
+"""Handler for the new_countdown command.
+
+The process of creating a new countdown is basically:
+    1. Ask to choose countdown format
+    2. Ask to type name for the countdown
+    3. Ask whether user would like to recieve daily reminders
+    4. Ask date and time for the countdown
+"""
+
 import logging
 import re
 
@@ -5,6 +14,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 
+from handlers.schedule_jobs import schedule_goodbye_cd, schedule_reminders
 from loader import dp, supabase
 from states.states import NewCountdown
 from utils.get_db_data import get_countdown_names, get_tz_info
@@ -12,10 +22,59 @@ from utils.validate_date import validate_dt
 
 
 @dp.message_handler(commands="new_countdown")
-async def ask_countdown_name(message: types.Message):
-    """ "Ask user for a countdown name."""
-    await message.reply("What would you like to name the countdown?")
-    await NewCountdown.waiting_for_name.set()
+async def ask_countdown_format(message: types.Message):
+    """Ask user to pick a countdown format.
+
+    There will be two countdown formats available:
+
+    1) End of the world
+       ----------------
+       1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds left
+
+    2) End of the world
+       ----------------
+       Time left:
+       1 year
+       2 months
+       3 days
+       4 hours
+       5 minutes
+       6 seconds
+    """
+
+    await NewCountdown.waiting_for_format.set()
+
+    heading = "<b>End of the world</b>\n═════════\n"
+    format_one = "1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds left"
+    format_two = (
+        "<i>Time left</i>:\n1 year\n2 months\n3 days\n4 hours\n5 minutes\n6 "
+        "seconds"
+    )
+
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ["1", "2"]
+    keyboard.add(*buttons)
+
+    await message.reply(
+        f"<b>Please choose a countdown format that you prefer.</b>\n\n"
+        f"—————1—————\n{heading}{format_one}\n\n"
+        f"—————2—————\n{heading}{format_two}",
+        reply_markup=keyboard,
+    )
+
+
+@dp.message_handler(
+    Text(equals=["1", "2"]), state=NewCountdown.waiting_for_format
+)
+async def ask_countdown_name(message: types.Message, state: FSMContext):
+    """Ask user for a countdown name."""
+    await state.update_data(cd_format=int(message.text))
+    await NewCountdown.next()
+
+    await message.answer(
+        "What would you like to name the countdown?",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
 
 
 @dp.message_handler(state=NewCountdown.waiting_for_name)
@@ -68,7 +127,7 @@ async def ask_countdown_dt(message: types.Message, state: FSMContext):
         "Please send the date and time for the countdown in <b>YYYY-MM-DD "
         "hh:mm</b> format (time in 24 hour format). You should provide a date "
         "and time in the future.\n\n<b>Example:</b> "
-        "'<code>2030-11-12 15:00</code>'.",
+        "<code>2030-11-12 15:00</code>",
         reply_markup=types.ReplyKeyboardRemove(),
     )
 
@@ -83,15 +142,18 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
         utc_dt = await validate_dt(countdown_dt, time_zone)
 
         if utc_dt:
+            user_id = message.from_user.id
             countdown_data = await state.get_data()
-            countdown_name = countdown_data.get("cd_name")
-            countdown_reminders = countdown_data.get("reminders")
+            countdown_name = countdown_data["cd_name"]
+            countdown_reminders = countdown_data["reminders"]
+            countdown_format = countdown_data["cd_format"]
 
             data = {
                 "name": countdown_name,
-                "tg_user_id": message.from_user.id,
+                "tg_user_id": user_id,
                 "date_time": utc_dt,
                 "reminders": countdown_reminders,
+                "format": countdown_format,
             }
 
             supabase.table("Countdowns").insert(data).execute()
@@ -100,8 +162,14 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
             await message.answer("Yay, countdown created successfully.")
             await state.finish()
 
-            # TODO 1: schedule daily reminders (if user has them on)
-            # TODO 2: schedule job to run when countdown is over (for everyone)
+            # schedule daily reminders (if user has them on)
+            if countdown_reminders:
+                await schedule_reminders(
+                    user_id, countdown_name, utc_dt, countdown_format
+                )
+
+            # schedule clean up job to run when countdown is over
+            await schedule_goodbye_cd(user_id, countdown_name, utc_dt)
 
         else:
             await message.reply(

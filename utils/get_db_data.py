@@ -64,3 +64,36 @@ async def get_countdown_names(user_id: int) -> Union[list, None]:
         return None
     else:
         return [countdown["name"] for countdown in data[0]]
+
+
+async def get_countdown_details(user_id: int, name: str) -> Union[dict, None]:
+    """Get specific countdown's details from the db.
+
+    Parameters
+    ----------
+    user_id : int
+        Telegram user id
+    name : str
+        Countdown name
+
+    Returns
+    -------
+    Union[dict, None]
+        Countdown details as a dictionary if countdown is found, None otherwise
+    """
+
+    data = (
+        supabase.table("Countdown")
+        .select("*")
+        .eq("tg_user_id", user_id)
+        .eq("name", name)
+        .execute()
+    )
+
+    try:
+        # data[0] -> [{'date_time': '2022-01-29T10:00:00+00:00', 'format': 2}]
+        assert len(data[0]) > 0
+    except AssertionError:
+        return None
+    else:
+        return data[0][0]
