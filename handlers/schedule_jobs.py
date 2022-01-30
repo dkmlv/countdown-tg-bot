@@ -1,3 +1,5 @@
+"""Job scheduling is mainly done here."""
+
 import datetime as dt
 import logging
 import uuid
@@ -34,7 +36,7 @@ async def schedule_reminders(
         args=[user_id, cd_name, date_time, cd_format],
         trigger="cron",
         id=job_id,
-        day_of_week="*",
+        day="*",
         hour=dt_obj.hour,
         minute=dt_obj.minute,
         end_date=dt_obj,

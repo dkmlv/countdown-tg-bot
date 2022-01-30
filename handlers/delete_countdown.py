@@ -1,3 +1,5 @@
+"""Everything related to deleting a countdown and removing scheduled jobs."""
+
 import logging
 from typing import Union
 import uuid
@@ -29,6 +31,28 @@ async def disable_daily_reminders(user_id: int, cd_name: str):
         # daily reminders were not on or the job already reached its end date
         # and deleted itself
         pass
+
+
+async def disable_cleanup(user_id: int, cd_name: str):
+    """Delete scheduled last clean up job if it exists.
+
+    Parameters
+    ----------
+    user_id : int
+        Telegram user id
+    cd_name : str
+        Countdown name
+    """
+
+    job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"bye {user_id} {cd_name}"))
+
+    try:
+        sched.remove_job(job_id)
+    except JobLookupError:
+        logging.exception(
+            "UNEXPECTED: User was deleting/editing a countdown and last clean "
+            "up job was not found."
+        )
 
 
 async def delete_countdown(user_id: int, cd_name: str) -> Union[list, None]:
@@ -136,16 +160,7 @@ async def user_delete_countdown(call: types.CallbackQuery, state: FSMContext):
     cd_name = state_data["cd_name"]
 
     await goodbye_countdown(user_id, cd_name)
-
-    job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"bye {user_id} {cd_name}"))
-
-    try:
-        sched.remove_job(job_id)
-    except JobLookupError:
-        logging.exception(
-            "UNEXPECTED: User was deleting a countdown and last clean up job "
-            "was not found."
-        )
+    await disable_cleanup(user_id, cd_name)
 
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(
@@ -154,6 +169,7 @@ async def user_delete_countdown(call: types.CallbackQuery, state: FSMContext):
         )
     )
 
+    await state.finish()
     await call.message.edit_text(
         text=f"You have deleted <b>{cd_name}</b>.", reply_markup=keyboard
     )

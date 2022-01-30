@@ -1,3 +1,5 @@
+"""Show countdown operation is handled here."""
+
 import logging
 
 from aiogram import types

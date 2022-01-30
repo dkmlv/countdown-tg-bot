@@ -1,3 +1,11 @@
+"""Handler for the my_countdown command.
+
+Using this command users can choose a countdown of their choice and:
+    1. Show countdown
+    2. Edit countdown
+    3. Delete countdown
+"""
+
 from typing import Union
 
 from aiogram import types
@@ -9,9 +17,7 @@ from utils.get_db_data import get_countdown_names
 
 
 @dp.message_handler(commands="my_countdowns", state="*")
-@dp.callback_query_handler(
-    text="back_to_list", state=MyCountdowns.countdown_selected
-)
+@dp.callback_query_handler(text="back_to_list", state="*")
 async def ask_to_pick_countdown(
     entity: Union[types.Message, types.CallbackQuery], state: FSMContext
 ):

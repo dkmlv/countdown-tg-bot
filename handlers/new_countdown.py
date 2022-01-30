@@ -8,7 +8,6 @@ The process of creating a new countdown is basically:
 """
 
 import logging
-import re
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -17,7 +16,8 @@ from aiogram.dispatcher.filters import Text
 from handlers.schedule_jobs import schedule_goodbye_cd, schedule_reminders
 from loader import dp, sched, supabase
 from states.states import NewCountdown
-from utils.get_db_data import get_countdown_names, get_tz_info
+from utils.check_cd_name import check_countdown_name
+from utils.get_db_data import get_tz_info
 from utils.validate_date import validate_dt
 
 
@@ -82,24 +82,17 @@ async def ask_daily_reminders(message: types.Message, state: FSMContext):
     """Ask preference on daily reminders if valid name is provided.
 
     User is expected to provide a countdown name. Check to make sure that the
-    name doesn't already exist in the list of that user's countdowns and that
-    it doesn't have any special symbols and if it does, ask to type the name
-    again. Otherwise, move on and ask about daily countdown reminders.
+    countdown name is valid. If it's valid, move on and ask about daily
+    reminders.
     """
 
     countdown_name = message.text
-    countdown_names = await get_countdown_names(message.from_user.id)
+    # text will be None if name is valid, str if invalid
+    text = await check_countdown_name(message.from_user.id, countdown_name)
 
-    if countdown_names and countdown_name in countdown_names:
-        await message.reply(
-            "You already have a countdown with this name. Try another name."
-        )
-    elif len(countdown_name) > 40:
-        await message.reply(
-            "Sorry, your countdown name cannot be longer than 40 characters. "
-            "Please type another name."
-        )
-    elif re.match(r"^[\w\s]+$", countdown_name):
+    if text:
+        await message.reply(text)
+    else:
         await state.update_data(cd_name=countdown_name)
         await NewCountdown.next()
 
@@ -111,11 +104,6 @@ async def ask_daily_reminders(message: types.Message, state: FSMContext):
             "Would you like to receive daily reminders about how much "
             "time is left till the countdown is up?",
             reply_markup=keyboard,
-        )
-    else:
-        await message.reply(
-            "Sorry, you can't have special symbols in the countdown name. "
-            "Please type the countdown name again."
         )
 
 
@@ -188,8 +176,3 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
             "Looks you did not set up your time zone at the start, so I'll "
             "abort this operation. Please use <b>/start</b> and try again."
         )
-
-
-@dp.message_handler(commands="print")
-async def print_jobs(message: types.Message):
-    sched.print_jobs()
