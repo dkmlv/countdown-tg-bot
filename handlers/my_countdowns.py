@@ -11,9 +11,10 @@ from typing import Union
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.emoji import emojize
 
-from loader import dp
 from handlers.show_countdown import send_countdown_details
+from loader import dp
 from states.states import MyCountdowns
 from utils.get_db_data import get_countdown_details, get_countdown_names
 
@@ -26,6 +27,8 @@ async def ask_to_pick_countdown(
 ):
     """Ask the user to pick a countdown."""
     if type(entity) == types.CallbackQuery:
+        # let the user know that its loading and not stuck
+        await entity.message.edit_text(emojize(":hourglass_flowing_sand:"))  # type: ignore
         await state.finish()
 
     countdown_names = await get_countdown_names(entity.from_user.id)
@@ -71,6 +74,9 @@ async def ask_to_pick_countdown(
 )
 async def present_countdown(call: types.CallbackQuery, state: FSMContext):
     """Present selected countdown with options on what to do with it."""
+    # let the user know that its loading and not stuck
+    await call.message.edit_text(emojize(":hourglass_flowing_sand:"))
+
     user_id = call.from_user.id
     countdown_name = call.data.split(":")[1]
 

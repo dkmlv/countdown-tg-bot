@@ -7,6 +7,7 @@ import uuid
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
+from aiogram.utils.emoji import emojize
 from handlers.delete_countdown import disable_cleanup, disable_daily_reminders
 from handlers.schedule_jobs import schedule_goodbye_cd, schedule_reminders
 from loader import dp, sched, supabase
@@ -22,6 +23,9 @@ from utils.validate_date import validate_dt
 )
 async def ask_what_to_edit(call: types.CallbackQuery, state: FSMContext):
     """Ask what specific countdown information to edit."""
+    # let the user know that its loading and not stuck
+    await call.message.edit_text(emojize(":hourglass_flowing_sand:"))
+
     user_id = call.from_user.id
     state_data = await state.get_data()
     countdown_name = state_data["cd_name"]
