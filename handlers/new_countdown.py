@@ -22,6 +22,7 @@ from utils.validate_date import validate_dt
 
 
 @dp.message_handler(commands="new_countdown", state="*")
+@dp.throttled(rate=3)
 async def ask_countdown_format(message: types.Message):
     """Ask user to pick a countdown format.
 
@@ -44,7 +45,8 @@ async def ask_countdown_format(message: types.Message):
 
     await NewCountdown.waiting_for_format.set()
 
-    heading = "<b>End of the world</b>\n═════════\n"
+    heading_one = "<b>Option 1</b>\n========\n"
+    heading_two = "<b>Option 2</b>\n========\n"
     format_one = "1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds left"
     format_two = (
         "<i>Time left</i>:\n1 year\n2 months\n3 days\n4 hours\n5 minutes\n6 "
@@ -56,10 +58,14 @@ async def ask_countdown_format(message: types.Message):
     keyboard.add(*buttons)
 
     await message.reply(
-        f"<b>Please choose a countdown format that you prefer.</b>\n\n"
-        f"—————1—————\n{heading}{format_one}\n\n"
-        f"—————2—————\n{heading}{format_two}",
+        f"{heading_one}{format_one}\n\n" f"{heading_two}{format_two}",
+    )
+    await message.answer(
+        f"<b>Please choose a countdown format that you prefer.</b>",
         reply_markup=keyboard,
+    )
+    await message.answer(
+        "Btw, you can cancel current operation anytime using <b>/cancel</b>."
     )
 
 
@@ -176,3 +182,8 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
             "Looks you did not set up your time zone at the start, so I'll "
             "abort this operation. Please use <b>/start</b> and try again."
         )
+
+
+@dp.message_handler(commands="print", state="*")
+async def print_jobs(message: types.Message):
+    sched.print_jobs()

@@ -18,6 +18,7 @@ from utils.get_db_data import get_countdown_names
 
 @dp.message_handler(commands="my_countdowns", state="*")
 @dp.callback_query_handler(text="back_to_list", state="*")
+@dp.throttled(rate=3)
 async def ask_to_pick_countdown(
     entity: Union[types.Message, types.CallbackQuery], state: FSMContext
 ):

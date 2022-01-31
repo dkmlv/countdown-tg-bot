@@ -31,10 +31,7 @@ async def send_countdown_details(
 
     time_diff = calculate_diff(date_time)
 
-    # didnt want to import math to round up the number
-    # basically the idea is to have one "═" for two characters and an extra "═"
-    # at the end
-    text_divider = "═" * (len(cd_name) // 2 + (len(cd_name) % 2 > 0) + 1)
+    text_divider = "=" * len(cd_name)
 
     text = f"<b>{cd_name}</b>\n{text_divider}\n"
 
