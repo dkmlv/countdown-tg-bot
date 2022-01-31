@@ -6,14 +6,16 @@ Using this command users can choose a countdown of their choice and:
     3. Delete countdown
 """
 
+import logging
 from typing import Union
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
 from loader import dp
+from handlers.show_countdown import send_countdown_details
 from states.states import MyCountdowns
-from utils.get_db_data import get_countdown_names
+from utils.get_db_data import get_countdown_details, get_countdown_names
 
 
 @dp.message_handler(commands="my_countdowns", state="*")
@@ -53,12 +55,12 @@ async def ask_to_pick_countdown(
 
     elif type(entity) == types.Message:
         await entity.answer(  # type: ignore
-            "You have no countdowns set up. To create a new countdown, use "
+            "You have no countdowns set up.\nTo create one, use "
             "<b>/new_countdown</b>"
         )
     elif type(entity) == types.CallbackQuery:
         await entity.message.edit_text(  # type: ignore
-            "You have no countdowns set up. To create a new countdown, use "
+            "You have no countdowns set up.\nTo create one, use "
             "<b>/new_countdown</b>"
         )
         await entity.answer()  # type: ignore
@@ -67,39 +69,56 @@ async def ask_to_pick_countdown(
 @dp.callback_query_handler(
     text_startswith="countdown:", state=[None, MyCountdowns.countdown_selected]
 )
-async def ask_what_to_do(call: types.CallbackQuery, state: FSMContext):
-    """Ask user what operation to perform on the selected countdown."""
+async def present_countdown(call: types.CallbackQuery, state: FSMContext):
+    """Present selected countdown with options on what to do with it."""
+    user_id = call.from_user.id
     countdown_name = call.data.split(":")[1]
 
     await MyCountdowns.countdown_selected.set()
     await state.update_data(cd_name=countdown_name)
 
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    countdown_data = await get_countdown_details(user_id, countdown_name)
 
-    buttons = [
-        types.InlineKeyboardButton(
-            text="Show Countdown", callback_data=f"show_countdown"
-        ),
-        types.InlineKeyboardButton(
-            text="Edit Countdown", callback_data=f"edit_countdown"
-        ),
-        types.InlineKeyboardButton(
-            text="Delete Countdown", callback_data=f"delete_countdown"
-        ),
-        types.InlineKeyboardButton(
-            text="<< Back to List", callback_data=f"back_to_list"
-        ),
-    ]
+    if not countdown_data:
+        logging.error(
+            "UNEXPECTED: Show Countdown operation failed. Countdown not found."
+        )
+        await call.message.answer(
+            "Sorry, I couldn't get countdown details. Please try again later."
+        )
+    else:
+        countdown_dt = countdown_data["date_time"]
+        countdown_format = countdown_data["format"]
 
-    # first button occupies whole row
-    keyboard.add(buttons[0])
-    keyboard.add(*buttons[1:3])
-    # last button occupies whole row
-    keyboard.add(buttons[3])
+        text = await send_countdown_details(
+            user_id,
+            countdown_name,
+            countdown_dt,
+            countdown_format,
+            scheduled=False,
+        )
 
-    await call.message.edit_text(
-        f"Great, you selected <b>{countdown_name}</b>.\nWhat do you want me "
-        "do with this countdown?",
-        reply_markup=keyboard,
-    )
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+
+        buttons = [
+            types.InlineKeyboardButton(
+                text="Edit Countdown", callback_data=f"edit_countdown"
+            ),
+            types.InlineKeyboardButton(
+                text="Delete Countdown", callback_data=f"delete_countdown"
+            ),
+            types.InlineKeyboardButton(
+                text="<< Back to List", callback_data=f"back_to_list"
+            ),
+        ]
+
+        keyboard.add(*buttons[0:-1])
+        # last button occupies whole row
+        keyboard.add(buttons[-1])
+
+        await call.message.edit_text(
+            text=text,  # type: ignore
+            reply_markup=keyboard,
+        )
+
     await call.answer()

@@ -79,7 +79,8 @@ async def ask_what_to_edit(call: types.CallbackQuery, state: FSMContext):
                 text=reminders_text, callback_data=reminders_data
             ),
             types.InlineKeyboardButton(
-                text="<< Back to List", callback_data="back_to_list"
+                text="<< Back to Countdown",
+                callback_data=f"countdown:{countdown_name}",
             ),
         ]
         keyboard.add(*buttons)
@@ -99,6 +100,7 @@ async def ask_new_countdown_name(call: types.CallbackQuery):
     await call.message.edit_text(
         "What would you like to change the countdown name to?"
     )
+    await call.answer()
 
 
 @dp.message_handler(state=MyCountdowns.edit_name)

@@ -14,7 +14,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 
 from handlers.schedule_jobs import schedule_goodbye_cd, schedule_reminders
-from loader import dp, sched, supabase
+from loader import dp, supabase
 from states.states import NewCountdown
 from utils.check_cd_name import check_countdown_name
 from utils.get_db_data import get_tz_info
@@ -58,7 +58,7 @@ async def ask_countdown_format(message: types.Message):
     keyboard.add(*buttons)
 
     await message.reply(
-        f"{heading_one}{format_one}\n\n" f"{heading_two}{format_two}",
+        f"{heading_one}{format_one}\n\n{heading_two}{format_two}",
     )
     await message.answer(
         f"<b>Please choose a countdown format that you prefer.</b>",
@@ -182,8 +182,3 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
             "Looks you did not set up your time zone at the start, so I'll "
             "abort this operation. Please use <b>/start</b> and try again."
         )
-
-
-@dp.message_handler(commands="print", state="*")
-async def print_jobs(message: types.Message):
-    sched.print_jobs()
