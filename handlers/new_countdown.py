@@ -45,8 +45,8 @@ async def ask_countdown_format(message: types.Message):
 
     await NewCountdown.waiting_for_format.set()
 
-    heading_one = "<b>Option 1</b>\n========\n"
-    heading_two = "<b>Option 2</b>\n========\n"
+    heading_one = "<b>Format 1</b>\n========\n"
+    heading_two = "<b>Format 2</b>\n========\n"
     format_one = "1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds left"
     format_two = (
         "<i>Time left</i>:\n1 year\n2 months\n3 days\n4 hours\n5 minutes\n6 "

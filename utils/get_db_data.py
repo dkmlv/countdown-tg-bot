@@ -97,3 +97,22 @@ async def get_countdown_details(user_id: int, name: str) -> Union[dict, None]:
         return None
     else:
         return data[0][0]
+
+
+async def get_all_countdowns() -> Union[list, None]:
+    """Get a list of all countdown.
+
+    Returns
+    -------
+    Union[list, None]
+        A list of all countdowns if at least one is found, else None
+    """
+
+    data = supabase.table("Countdowns").select("*").execute()
+
+    try:
+        assert len(data[0]) > 0
+    except AssertionError:
+        return None
+    else:
+        return data[0]

@@ -11,3 +11,10 @@ async def notify_on_startup(dp: Dispatcher):
     except Exception as err:
         logging.exception(err)
 
+
+async def notify_on_shutdown(dp: Dispatcher):
+    """Notify admin that the bot has shut down."""
+    try:
+        await dp.bot.send_message(ADMIN, "Bot shut down!")
+    except Exception as err:
+        logging.exception(err)
