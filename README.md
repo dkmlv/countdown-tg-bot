@@ -1,3 +1,5 @@
+[![Telegram](https://img.shields.io/badge/telegram-%40countdownTgBot-blue)](https://t.me/countdownTgBot)
+
 # Countdown Telegram Bot
 
 This is a simple countdown bot that allows users to create countdowns and keep track of how much time is left.
