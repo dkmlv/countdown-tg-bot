@@ -29,9 +29,19 @@ async def ask_to_pick_countdown(
     if type(entity) == types.CallbackQuery:
         # let the user know that its loading and not stuck
         await entity.message.edit_text(emojize(":hourglass_flowing_sand:"))  # type: ignore
-        await state.finish()
 
-    countdown_names = await get_countdown_names(entity.from_user.id)
+    # if the countdown names are saved in the state, get them (faster)
+    state_data = await state.get_data()
+    countdown_names = state_data.get("countdown_names")
+    # reset the state since the state may contain more data that is not needed
+    await state.finish()
+
+    if not countdown_names:
+        # names are not in state, query supabase (slower)
+        countdown_names = await get_countdown_names(entity.from_user.id)
+
+    await MyCountdowns.browsing_cds.set()
+    await state.update_data(countdown_names=countdown_names)
 
     if countdown_names:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -70,7 +80,8 @@ async def ask_to_pick_countdown(
 
 
 @dp.callback_query_handler(
-    text_startswith="countdown:", state=[None, MyCountdowns.countdown_selected]
+    text_startswith="countdown:",
+    state=[MyCountdowns.browsing_cds, MyCountdowns.countdown_selected],
 )
 async def present_countdown(call: types.CallbackQuery, state: FSMContext):
     """Present selected countdown with options on what to do with it."""
@@ -81,9 +92,15 @@ async def present_countdown(call: types.CallbackQuery, state: FSMContext):
     countdown_name = call.data.split(":")[1]
 
     await MyCountdowns.countdown_selected.set()
-    await state.update_data(cd_name=countdown_name)
 
-    countdown_data = await get_countdown_details(user_id, countdown_name)
+    state_data = await state.get_data()
+
+    if state_data.get("cd_name"):
+        # if theres info on countdown name in the state, then all countdown
+        # details should also be available in the state
+        countdown_data = state_data
+    else:
+        countdown_data = await get_countdown_details(user_id, countdown_name)
 
     if not countdown_data:
         logging.error(
@@ -94,7 +111,14 @@ async def present_countdown(call: types.CallbackQuery, state: FSMContext):
         )
     else:
         countdown_dt = countdown_data["date_time"]
-        countdown_format = countdown_data["format"]
+        countdown_reminders = countdown_data["reminders"]
+        countdown_format = countdown_data["cd_format"]
+
+        if not state_data.get("cd_name"):
+            await state.update_data(cd_name=countdown_name)
+            await state.update_data(date_time=countdown_dt)
+            await state.update_data(reminders=countdown_reminders)
+            await state.update_data(cd_format=countdown_format)
 
         text = await send_countdown_details(
             user_id,

@@ -14,7 +14,7 @@ from loader import dp, sched, supabase
 from states.states import MyCountdowns
 from utils.check_cd_name import check_countdown_name
 from utils.convert_dt import convert_dt
-from utils.get_db_data import get_countdown_details, get_tz_info
+from utils.get_db_data import get_tz_info
 from utils.validate_date import validate_dt
 
 
@@ -29,67 +29,56 @@ async def ask_what_to_edit(call: types.CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
     state_data = await state.get_data()
     countdown_name = state_data["cd_name"]
+    countdown_dt = state_data["date_time"]
+    countdown_reminders = state_data["reminders"]
+    countdown_format = state_data["cd_format"]
 
-    countdown_data = await get_countdown_details(user_id, countdown_name)
+    countdown_in_users_tz = await convert_dt(user_id, countdown_dt)
 
-    if not countdown_data:
-        logging.error(
-            "UNEXPECTED: Edit Countdown operation failed. Countdown not found."
-        )
-        await call.message.answer(
-            "Sorry, I couldn't get countdown details. Please try again later."
-        )
+    if countdown_format == 1:
+        format_data = "change_format_to:2"
     else:
-        countdown_dt = countdown_data["date_time"]
-        countdown_in_users_tz = await convert_dt(user_id, countdown_dt)
+        format_data = "change_format_to:1"
 
-        countdown_format = countdown_data["format"]
-        if countdown_format == 1:
-            format_data = "change_format_to:2"
-        else:
-            format_data = "change_format_to:1"
+    if countdown_reminders:
+        reminders_text = "Turn Reminders OFF"
+        reminders_data = "turn_reminders_off"
+        countdown_reminders = "ON"
+    else:
+        reminders_text = "Turn Reminders ON"
+        reminders_data = "turn_reminders_on"
+        countdown_reminders = "OFF"
 
-        countdown_reminders = countdown_data["reminders"]
+    text = (
+        "What info do you want me to edit?\n\n"
+        f"<b>Name</b>: {countdown_name}\n"
+        f"<b>DateTime</b>: {countdown_in_users_tz}\n"
+        f"<b>Format</b>: {countdown_format}\n"
+        f"<b>Reminders</b>: {countdown_reminders}\n"
+    )
 
-        if countdown_reminders:
-            reminders_text = "Turn Reminders OFF"
-            reminders_data = "turn_reminders_off"
-            countdown_reminders = "ON"
-        else:
-            reminders_text = "Turn Reminders ON"
-            reminders_data = "turn_reminders_on"
-            countdown_reminders = "OFF"
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        types.InlineKeyboardButton(
+            text="Edit Name", callback_data="edit_name"
+        ),
+        types.InlineKeyboardButton(
+            text="Edit DateTime", callback_data="edit_dt"
+        ),
+        types.InlineKeyboardButton(
+            text="Change Format", callback_data=format_data
+        ),
+        types.InlineKeyboardButton(
+            text=reminders_text, callback_data=reminders_data
+        ),
+        types.InlineKeyboardButton(
+            text="<< Back to Countdown",
+            callback_data=f"countdown:{countdown_name}",
+        ),
+    ]
+    keyboard.add(*buttons)
 
-        text = (
-            "What information do you want me to edit?\n\n"
-            f"<b>Name</b>: {countdown_name}\n"
-            f"<b>DateTime</b>: {countdown_in_users_tz}\n"
-            f"<b>Format</b>: {countdown_format}\n"
-            f"<b>Reminders</b>: {countdown_reminders}\n"
-        )
-
-        keyboard = types.InlineKeyboardMarkup(row_width=2)
-        buttons = [
-            types.InlineKeyboardButton(
-                text="Edit Name", callback_data="edit_name"
-            ),
-            types.InlineKeyboardButton(
-                text="Edit DateTime", callback_data="edit_dt"
-            ),
-            types.InlineKeyboardButton(
-                text="Change Format", callback_data=format_data
-            ),
-            types.InlineKeyboardButton(
-                text=reminders_text, callback_data=reminders_data
-            ),
-            types.InlineKeyboardButton(
-                text="<< Back to Countdown",
-                callback_data=f"countdown:{countdown_name}",
-            ),
-        ]
-        keyboard.add(*buttons)
-
-        await call.message.edit_text(text=text, reply_markup=keyboard)
+    await call.message.edit_text(text=text, reply_markup=keyboard)
 
     await call.answer()
 
@@ -139,7 +128,7 @@ async def update_countdown_name(message: types.Message, state: FSMContext):
         countdown_data = data[0][0]
         countdown_dt = countdown_data["date_time"]
         countdown_reminders = countdown_data["reminders"]
-        countdown_format = countdown_data["format"]
+        countdown_format = countdown_data["cd_format"]
 
         if countdown_reminders:
             await disable_daily_reminders(user_id, old_countdown_name)
@@ -171,9 +160,9 @@ async def ask_new_countdown_dt(call: types.CallbackQuery):
     await MyCountdowns.edit_dt.set()
     await call.message.edit_text(
         "Please send the date and time for the countdown in <b>YYYY-MM-DD "
-        "hh:mm</b> format (time in 24 hour format). You should provide a date "
-        "and time in the future.\n\n<b>Example:</b> "
-        "<code>2030-11-12 15:00</code>"
+        "hh:mm</b> format (time in 24 hour format). You should provide a "
+        "future date and time. You can omit the time and 00:00 will be used.\n"
+        "\n<b>Example:</b> <code>2030-11-12 15:00</code>",
     )
     await call.answer()
 
@@ -186,6 +175,11 @@ async def update_countdown_dt(message: types.Message, state: FSMContext):
     """
 
     countdown_dt = message.text
+
+    if len(countdown_dt.split(" ")) == 1:
+        # if time wasn't provided
+        countdown_dt += " 00:00"
+
     time_zone = await get_tz_info(message.from_user.id)
 
     # to create a countdown, tz info is required so it cant be None rn
@@ -209,7 +203,7 @@ async def update_countdown_dt(message: types.Message, state: FSMContext):
         countdown_data = data[0][0]
         countdown_dt = countdown_data["date_time"]
         countdown_reminders = countdown_data["reminders"]
-        cd_format = countdown_data["format"]
+        cd_format = countdown_data["cd_format"]
 
         dt_format = "%Y-%m-%dT%H:%M:%S%z"
         dt_obj = dt.datetime.strptime(countdown_dt, dt_format)
@@ -282,7 +276,7 @@ async def update_cd_format(call: types.CallbackQuery, state: FSMContext):
 
     data = (
         supabase.table("Countdowns")
-        .update({"format": cd_format})
+        .update({"cd_format": cd_format})
         .eq("tg_user_id", user_id)
         .eq("name", countdown_name)
         .execute()
@@ -334,7 +328,7 @@ async def turn_reminders_on(call: types.CallbackQuery, state: FSMContext):
 
     countdown_data = data[0][0]
     countdown_dt = countdown_data["date_time"]
-    countdown_format = countdown_data["format"]
+    countdown_format = countdown_data["cd_format"]
 
     await schedule_reminders(
         user_id, countdown_name, countdown_dt, countdown_format

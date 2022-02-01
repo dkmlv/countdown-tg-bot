@@ -157,7 +157,7 @@ async def validate_and_insert(message: types.Message, state: FSMContext):
                 "tg_user_id": user_id,
                 "date_time": utc_dt,
                 "reminders": countdown_reminders,
-                "format": countdown_format,
+                "cd_format": countdown_format,
             }
 
             supabase.table("Countdowns").insert(data).execute()

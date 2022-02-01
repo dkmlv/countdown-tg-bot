@@ -13,6 +13,7 @@ class NewCountdown(StatesGroup):
 
 
 class MyCountdowns(StatesGroup):
+    browsing_cds = State()
     countdown_selected = State()
     edit_name = State()
     edit_dt = State()

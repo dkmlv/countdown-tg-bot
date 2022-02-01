@@ -95,7 +95,7 @@ async def schedule_all():
             user_id = countdown["tg_user_id"]
             countdown_dt = countdown["date_time"]
             reminders = countdown["reminders"]
-            cd_format = countdown["format"]
+            cd_format = countdown["cd_format"]
 
             if reminders:
                 await schedule_reminders(
