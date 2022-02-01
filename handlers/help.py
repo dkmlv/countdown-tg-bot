@@ -24,7 +24,8 @@ async def give_help(message: types.Message):
         "<i>/my_countdowns</i> - manage countdowns (see how much time is "
         "left, edit & delete countdown)\n"
         "<i>/cancel</i> - cancel current operation (if the bot is frozen, "
-        "try using this command)\n\n<b>Source code "
+        "try using this command)\n\n<b>NOTE</b>:\n1 month -> 30.5 days\n"
+        "1 year -> 365 days\n\n<b>Source code "
         '<a href="https://github.com/DurbeKK/countdown-tg-bot">here</a></b>'
     )
     await message.reply(help_msg)
