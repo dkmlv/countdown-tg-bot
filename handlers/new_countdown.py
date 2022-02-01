@@ -124,9 +124,9 @@ async def ask_countdown_dt(message: types.Message, state: FSMContext):
 
     await message.answer(
         "Please send the date and time for the countdown in <b>YYYY-MM-DD "
-        "hh:mm</b> format (time in 24 hour format). You should provide a date "
-        "and time in the future.\n\n<b>Example:</b> "
-        "<code>2030-11-12 15:00</code>",
+        "hh:mm</b> format (time in 24 hour format). You should provide a "
+        "future date and time. You can omit the time and 00:00 will be used.\n"
+        "\n<b>Example:</b> <code>2030-11-12 15:00</code>",
         reply_markup=types.ReplyKeyboardRemove(),
     )
 
@@ -135,6 +135,11 @@ async def ask_countdown_dt(message: types.Message, state: FSMContext):
 async def validate_and_insert(message: types.Message, state: FSMContext):
     """Validate date and time and insert countdown data to db."""
     countdown_dt = message.text
+
+    if len(countdown_dt.split(" ")) == 1:
+        # if time wasn't provided
+        countdown_dt += " 00:00"
+
     time_zone = await get_tz_info(message.from_user.id)
 
     if time_zone:
