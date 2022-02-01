@@ -24,7 +24,7 @@ async def greet_user(message: types.Message):
     """Greet user and ask their time zone if they don't exist in db."""
     await message.reply(
         "Hello there, my name is <b>Mirai</b> and I can help you create "
-        "countdowns for your events/goals."
+        "countdowns for anything you want."
     )
 
     time_zone = await get_tz_info(message.from_user.id)
