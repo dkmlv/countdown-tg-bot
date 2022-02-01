@@ -1,0 +1,18 @@
+version: "3"
+services:
+    bot:
+        build: .
+        container_name: countdown
+        restart: "unless-stopped"
+        env_file:
+            - .env
+        depends_on:
+            - redis
+    redis:
+        container_name: redis_db
+        image: redis:6.2-alpine
+        restart: "unless-stopped"
+        volumes:
+            - "./redis.conf:/usr/local/etc/redis/redis.conf"
+            - "~/redis_data:/data"
+        command: "redis-server /usr/local/etc/redis/redis.conf"
